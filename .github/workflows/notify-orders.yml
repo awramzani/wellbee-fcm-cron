@@ -1,0 +1,29 @@
+name: Supplier Order Reminder
+
+on:
+  schedule:
+    # Every 3 hours, all day (times are UTC)
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+
+jobs:
+  check-orders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check pending orders and notify
+        run: node send-order-reminder.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FIREBASE_DB_URL: 'https://well-bee-pharmacy-default-rtdb.asia-southeast1.firebasedatabase.app'
+          FCM_TOPIC: 'all_users'
