@@ -1,0 +1,12 @@
+{
+  "name": "fcm-scheduled-notifications",
+  "version": "1.0.0",
+  "description": "Sends scheduled FCM push notifications via GitHub Actions cron",
+  "main": "send-notification.js",
+  "scripts": {
+    "send": "node send-notification.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  }
+}
