@@ -18,16 +18,28 @@ admin.initializeApp({
 });
 
 // Supplier -> day-of-week mapping. Edit supplier-config.json to add/change suppliers.
+// Days must be short form: Mon, Tue, Wed, Thu, Fri, Sat, Sun
 const supplierConfig = JSON.parse(
   fs.readFileSync(path.join(__dirname, 'supplier-config.json'), 'utf8')
 );
 
-// Get today's weekday name in Pakistan time (server runs in UTC on GitHub Actions)
+// Get today's short weekday name (Mon/Tue/Wed...) in Pakistan time
+// (GitHub Actions runners run in UTC, so we must convert)
 function getTodayWeekday() {
   return new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Karachi',
-    weekday: 'long'
-  }).format(new Date());
+    weekday: 'short'
+  }).format(new Date()); // returns e.g. "Wed"
+}
+
+function matchesSupplier(order, supplierName) {
+  const trimmedName = supplierName.trim();
+  const code = (order.supplierCode || '').trim();
+  const name = (order.supplierName || '').trim();
+  // Case-sensitive exact match against either field, since some supplier
+  // names in the DB differ only by casing and represent distinct suppliers
+  // (e.g. "AHBAB" vs "Ahbab").
+  return code === trimmedName || name === trimmedName;
 }
 
 async function main() {
@@ -44,7 +56,7 @@ async function main() {
 
   console.log(
     'Suppliers scheduled today:',
-    suppliersToday.map((s) => s.supplierName).join(', ')
+    suppliersToday.map((s) => s.name).join(', ')
   );
 
   // Fetch all orders from Firebase Realtime Database
@@ -57,13 +69,13 @@ async function main() {
     const pendingItems = allOrders.filter(
       (order) =>
         order &&
-        order.supplierCode === supplier.supplierCode &&
         order.isDeleted === false &&
-        order.isOrderSent === false
+        order.isOrderSent === false &&
+        matchesSupplier(order, supplier.name)
     );
 
     if (pendingItems.length === 0) {
-      console.log(`No pending orders for ${supplier.supplierName}. Skipping — no notification sent.`);
+      console.log(`No pending orders for ${supplier.name}. Skipping — no notification sent.`);
       continue;
     }
 
@@ -71,7 +83,7 @@ async function main() {
     const extraCount = pendingItems.length - 3;
     const extraText = extraCount > 0 ? ` and ${extraCount} more item(s)` : '';
 
-    const title = `📦 Order Due Today — ${supplier.supplierName}`;
+    const title = `📦 Order Due Today — ${supplier.name}`;
     const body = `${pendingItems.length} item(s) pending: ${previewNames}${extraText}. Please place today's order.`;
 
     const message = {
@@ -79,16 +91,16 @@ async function main() {
       data: {
         click_action: 'FLUTTER_NOTIFICATION_CLICK',
         type: 'order_reminder',
-        supplierCode: supplier.supplierCode
+        supplierName: supplier.name
       },
       topic: TOPIC
     };
 
     try {
       const response = await admin.messaging().send(message);
-      console.log(`✅ Reminder sent for ${supplier.supplierName}:`, response);
+      console.log(`✅ Reminder sent for ${supplier.name}:`, response);
     } catch (error) {
-      console.error(`❌ Failed to send reminder for ${supplier.supplierName}:`, error);
+      console.error(`❌ Failed to send reminder for ${supplier.name}:`, error);
     }
   }
 }
