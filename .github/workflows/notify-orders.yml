@@ -29,5 +29,5 @@ jobs:
         run: node send-order-reminder.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          FIREBASE_DB_URL: 'https://well-bee-pharmacy-default-rtdb.asia-southeast1.firebasedatabase.app'
+          FIREBASE_DB_URL: ${{ secrets.FIREBASE_DB_URL }}
           FCM_TOPIC: 'all_users'
