@@ -8,7 +8,7 @@ try {
   }
   serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 } catch (err) {
-  console.error('❌ Error parsing FIREBASE_SERVICE_ACCOUNT:', err.message);
+  console.error('Error parsing FIREBASE_SERVICE_ACCOUNT:', err.message);
   process.exit(1);
 }
 
@@ -19,7 +19,7 @@ try {
     credential: admin.credential.cert(serviceAccount)
   });
 } catch (err) {
-  console.error('❌ Error initializing Firebase:', err.message);
+  console.error('Error initializing Firebase:', err.message);
   process.exit(1);
 }
 
@@ -33,7 +33,7 @@ try {
  * Anchor: 2026-01-01 (Asia/Karachi) = day 0 = a "run" day.
  */
 function isExpiryReminderDay() {
-  const ANCHOR_DATE_UTC = Date.UTC(2026, 0, 1); // 2026-01-01
+  const ANCHOR_DATE_UTC = Date.UTC(2026, 0, 1);
   const nowInKarachi = new Date(
     new Date().toLocaleString('en-US', { timeZone: 'Asia/Karachi' })
   );
@@ -52,7 +52,7 @@ function isExpiryReminderDay() {
 
 async function main() {
   if (!isExpiryReminderDay()) {
-    console.log('Not a scheduled expiry-reminder day. Skipping — no notification sent.');
+    console.log('Not a scheduled expiry-reminder day. Skipping.');
     return;
   }
 
@@ -60,7 +60,7 @@ async function main() {
 
   const message = {
     notification: {
-      title: '⚠️ Check Expired Medicines',
+      title: 'Check Expired Medicines',
       body: 'Please review the Expired Medicine list and remove or update items as needed.'
     },
     data: {
@@ -71,7 +71,7 @@ async function main() {
   };
 
   const response = await admin.messaging().send(message);
-  console.log('✅ Expiry reminder sent:', response);
+  console.log('Expiry reminder sent:', response);
 }
 
 main()
@@ -80,6 +80,6 @@ main()
     process.exit(0);
   })
   .catch((err) => {
-    console.error('❌ Fatal error:', err.message || err);
+    console.error('Fatal error:', err);
     process.exit(1);
   });
