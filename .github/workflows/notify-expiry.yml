@@ -2,15 +2,18 @@ name: Expire Medicine Reminder
 
 on:
   schedule:
-    # Every 2 days at 9:00 AM PKT (04:00 UTC)
-    - cron: '0 4 */2 * *'
-    # Every 2 days at 6:00 PM PKT (13:00 UTC)
-    - cron: '0 13 */2 * *'
+    # Runs DAILY at 9:00 AM and 6:00 PM PKT. The script itself decides
+    # (via true epoch-day parity, see send-expiry-reminder.js) whether
+    # today is an actual "send" day — giving accurate every-other-day
+    # behavior with no month-boundary drift.
+    - cron: '0 4 * * *'   # 09:00 AM PKT
+    - cron: '0 13 * * *'  # 06:00 PM PKT
   workflow_dispatch:
 
 jobs:
   send-reminder:
     runs-on: ubuntu-latest
+    timeout-minutes: 5  # safety net: force-kill if it ever hangs, so it can't burn hours of quota
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -23,10 +26,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Send expiry check reminder
-        run: node send-notification.js
+      - name: Send expiry check reminder (if scheduled today)
+        run: node send-expiry-reminder.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          NOTIFICATION_TITLE: '⚠️ Check Expired Medicines'
-          NOTIFICATION_BODY: 'Please review the Expired Medicine list and remove or update items as needed.'
           FCM_TOPIC: 'all_users'
