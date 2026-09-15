@@ -1,12 +1,27 @@
 const admin = require('firebase-admin');
 
 // --- Setup ---
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+let serviceAccount;
+try {
+  if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set');
+  }
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} catch (err) {
+  console.error('❌ Error parsing FIREBASE_SERVICE_ACCOUNT:', err.message);
+  process.exit(1);
+}
+
 const TOPIC = process.env.FCM_TOPIC || 'all_users';
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+try {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+} catch (err) {
+  console.error('❌ Error initializing Firebase:', err.message);
+  process.exit(1);
+}
 
 /**
  * True "every other day" check, independent of calendar/month boundaries.
@@ -65,6 +80,6 @@ main()
     process.exit(0);
   })
   .catch((err) => {
-    console.error('❌ Fatal error:', err);
+    console.error('❌ Fatal error:', err.message || err);
     process.exit(1);
   });
