@@ -105,7 +105,12 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('Fatal error:', err);
-  process.exit(1);
-});
+main()
+  .then(() => {
+    console.log('Done. Exiting.');
+    process.exit(0); // force-close, otherwise the Realtime DB socket keeps the job alive
+  })
+  .catch((err) => {
+    console.error('Fatal error:', err);
+    process.exit(1);
+  });
