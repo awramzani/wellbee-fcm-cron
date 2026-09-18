@@ -1,0 +1,30 @@
+name: Random Medicine Stock Check Reminder
+
+on:
+  schedule:
+    # Times are UTC. PKT = UTC+5.
+    - cron: '0 7 * * *'   # 12:00 PM PKT
+    - cron: '0 17 * * *'  # 10:00 PM PKT
+  workflow_dispatch:
+
+jobs:
+  send-reminder:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5  # safety net: force-kill if it ever hangs
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Send random medicine stock-check reminder
+        run: node send-random-medicine-check.js
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FCM_TOPIC: 'all_users'
