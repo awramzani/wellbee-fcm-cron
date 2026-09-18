@@ -1,30 +1,24 @@
 const admin = require('firebase-admin');
 
 // --- Setup ---
-let serviceAccount;
-try {
-  if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
-    throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set');
-  }
-  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-} catch (err) {
-  console.error('Error parsing FIREBASE_SERVICE_ACCOUNT:', err.message);
-  process.exit(1);
-}
-
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 const TOPIC = process.env.FCM_TOPIC || 'all_users';
 
-try {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
-} catch (err) {
-  console.error('Error initializing Firebase:', err.message);
-  process.exit(1);
-}
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
 
+/**
+ * True "every other day" check, independent of calendar/month boundaries.
+ * Cron's `day-of-month */2` drifts around month transitions (e.g. day 31 -> 1
+ * can both be "odd"), so instead we compute an absolute day count since a
+ * fixed anchor date and check its parity. This guarantees a consistent
+ * skip-one/run-one cadence forever, regardless of month length.
+ *
+ * Anchor: 2026-01-01 (Asia/Karachi) = day 0 = a "run" day.
+ */
 function isExpiryReminderDay() {
-  const ANCHOR_DATE_UTC = Date.UTC(2026, 0, 1);
+  const ANCHOR_DATE_UTC = Date.UTC(2026, 0, 1); // 2026-01-01
   const nowInKarachi = new Date(
     new Date().toLocaleString('en-US', { timeZone: 'Asia/Karachi' })
   );
@@ -43,7 +37,7 @@ function isExpiryReminderDay() {
 
 async function main() {
   if (!isExpiryReminderDay()) {
-    console.log('Not a scheduled expiry-reminder day. Skipping.');
+    console.log('Not a scheduled expiry-reminder day. Skipping — no notification sent.');
     return;
   }
 
@@ -51,7 +45,7 @@ async function main() {
 
   const message = {
     notification: {
-      title: 'Check Expired Medicines',
+      title: '⚠️ Check Expired Medicines',
       body: 'Please review the Expired Medicine list and remove or update items as needed.'
     },
     data: {
@@ -62,7 +56,7 @@ async function main() {
   };
 
   const response = await admin.messaging().send(message);
-  console.log('Expiry reminder sent:', response);
+  console.log('✅ Expiry reminder sent:', response);
 }
 
 main()
@@ -71,6 +65,6 @@ main()
     process.exit(0);
   })
   .catch((err) => {
-    console.error('Fatal error:', err);
+    console.error('❌ Fatal error:', err);
     process.exit(1);
   });
