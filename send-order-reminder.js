@@ -3,19 +3,34 @@ const fs = require('fs');
 const path = require('path');
 
 // --- Setup ---
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+let serviceAccount;
+try {
+  if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set');
+  }
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} catch (err) {
+  console.error('Error parsing FIREBASE_SERVICE_ACCOUNT:', err.message);
+  process.exit(1);
+}
+
 const DB_URL = process.env.FIREBASE_DB_URL;
 const TOPIC = process.env.FCM_TOPIC || 'all_users';
 
 if (!DB_URL) {
-  console.error('❌ FIREBASE_DB_URL is not set.');
+  console.error('FIREBASE_DB_URL is not set.');
   process.exit(1);
 }
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: DB_URL
-});
+try {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: DB_URL
+  });
+} catch (err) {
+  console.error('Error initializing Firebase:', err.message);
+  process.exit(1);
+}
 
 // Supplier -> day-of-week mapping. Edit supplier-config.json to add/change suppliers.
 // Days must be short form: Mon, Tue, Wed, Thu, Fri, Sat, Sun
@@ -24,21 +39,17 @@ const supplierConfig = JSON.parse(
 );
 
 // Get today's short weekday name (Mon/Tue/Wed...) in Pakistan time
-// (GitHub Actions runners run in UTC, so we must convert)
 function getTodayWeekday() {
   return new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Karachi',
     weekday: 'short'
-  }).format(new Date()); // returns e.g. "Wed"
+  }).format(new Date());
 }
 
 function matchesSupplier(order, supplierName) {
   const trimmedName = supplierName.trim();
   const code = (order.supplierCode || '').trim();
   const name = (order.supplierName || '').trim();
-  // Case-sensitive exact match against either field, since some supplier
-  // names in the DB differ only by casing and represent distinct suppliers
-  // (e.g. "AHBAB" vs "Ahbab").
   return code === trimmedName || name === trimmedName;
 }
 
@@ -46,7 +57,6 @@ async function main() {
   const today = getTodayWeekday();
   console.log(`Today (Pakistan time): ${today}`);
 
-  // Only check suppliers whose order-day matches today
   const suppliersToday = supplierConfig.filter((s) => s.days.includes(today));
 
   if (suppliersToday.length === 0) {
@@ -59,13 +69,11 @@ async function main() {
     suppliersToday.map((s) => s.name).join(', ')
   );
 
-  // Fetch all orders from Firebase Realtime Database
   const snapshot = await admin.database().ref('orders').once('value');
   const orders = snapshot.val() || {};
   const allOrders = Object.values(orders);
 
   for (const supplier of suppliersToday) {
-    // Pending = not deleted AND order not yet sent
     const pendingItems = allOrders.filter(
       (order) =>
         order &&
@@ -83,14 +91,14 @@ async function main() {
     const extraCount = pendingItems.length - 3;
     const extraText = extraCount > 0 ? ` and ${extraCount} more item(s)` : '';
 
-    const title = `📦 Order Due Today — ${supplier.name}`;
+    const title = `Order Due Today — ${supplier.name}`;
     const body = `${pendingItems.length} item(s) pending: ${previewNames}${extraText}. Please place today's order.`;
 
     const message = {
       notification: { title, body },
       data: {
         click_action: 'FLUTTER_NOTIFICATION_CLICK',
-        type: 'order_reminder',
+        type: 'order',
         supplierName: supplier.name
       },
       topic: TOPIC
@@ -98,9 +106,9 @@ async function main() {
 
     try {
       const response = await admin.messaging().send(message);
-      console.log(`✅ Reminder sent for ${supplier.name}:`, response);
+      console.log(`Reminder sent for ${supplier.name}:`, response);
     } catch (error) {
-      console.error(`❌ Failed to send reminder for ${supplier.name}:`, error);
+      console.error(`Failed to send reminder for ${supplier.name}:`, error);
     }
   }
 }
@@ -108,7 +116,7 @@ async function main() {
 main()
   .then(() => {
     console.log('Done. Exiting.');
-    process.exit(0); // force-close, otherwise the Realtime DB socket keeps the job alive
+    process.exit(0);
   })
   .catch((err) => {
     console.error('Fatal error:', err);
