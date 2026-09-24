@@ -2,11 +2,9 @@ name: Supplier Order Reminder
 
 on:
   schedule:
-    # Strictly 3 fixed times/day, Pakistan Time (PKT = UTC+5).
-    # No other cron entries exist for this workflow — do not add more.
-    - cron: '0 4 * * *'   # 09:00 AM PKT
-    - cron: '0 9 * * *'   # 02:00 PM PKT
-    - cron: '0 17 * * *'  # 10:00 PM PKT
+    # Hourly, 7:00 AM to 12:00 PM PKT (PKT = UTC+5 -> 02:00-07:00 UTC)
+    # Runs at: 7, 8, 9, 10, 11, 12 (PKT)
+    - cron: '0 2-7 * * *'
   workflow_dispatch:
 
 jobs:
