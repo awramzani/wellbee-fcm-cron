@@ -2,9 +2,11 @@ name: Supplier Order Reminder
 
 on:
   schedule:
-    # Hourly, 7:00 AM to 12:00 PM PKT (PKT = UTC+5 -> 02:00-07:00 UTC)
-    # Runs at: 7, 8, 9, 10, 11, 12 (PKT)
-    - cron: '0 2-7 * * *'
+    # Hourly, 6:00 AM to 11:00 AM PKT (PKT = UTC+5 -> 01:00-06:00 UTC)
+    # Runs at: 6, 7, 8, 9, 10, 11 (PKT)
+    - cron: '0 1-6 * * *'
+    # Extra run at 11:30 AM PKT (06:30 UTC)
+    - cron: '30 6 * * *'
   workflow_dispatch:
 
 jobs:
