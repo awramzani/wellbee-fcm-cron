@@ -2,12 +2,12 @@ name: Expire Medicine Reminder
 
 on:
   schedule:
-    # Runs DAILY at 9:00 AM and 6:00 PM PKT. The script itself decides
+    # Runs DAILY at 7:00 PM and 9:00 PM PKT (UTC+5). The script itself decides
     # (via true epoch-day parity, see send-expiry-reminder.js) whether
-    # today is an actual "send" day — giving accurate every-other-day
+    # today is an actual "send" day — giving accurate every-2-days
     # behavior with no month-boundary drift.
-    - cron: '0 4 * * *'   # 09:00 AM PKT
-    - cron: '0 13 * * *'  # 06:00 PM PKT
+    - cron: '0 14 * * *'  # 07:00 PM PKT
+    - cron: '0 16 * * *'  # 09:00 PM PKT
   workflow_dispatch:
 
 jobs:
